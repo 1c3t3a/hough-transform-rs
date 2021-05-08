@@ -2,7 +2,7 @@ use image::{io::Reader as ImageReader, ImageBuffer, Luma};
 use na::DMatrix;
 
 fn create_lines(x: u32, y: u32, greyvalue: u8) -> Vec<(i32, i32)> {
-    vec![(50, 50)]
+    vec![(0, 0)]
 }
 
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
@@ -18,6 +18,9 @@ fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMa
 }
 
 fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
+    let max_value = hough_space.max();
+
+    println!("Max value in Hough-Space is: {}", max_value);
     let width = hough_space.nrows();
     let height = hough_space.ncols();
 
@@ -25,7 +28,10 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
 
     for y in 0..height {
         for x in 0..width {
-            let grey_val = hough_space[(x, y)] as f32 / 255.0;
+            let grey_val = na::min(
+                ((hough_space[(x, y)] as f64) * 255.0 / (max_value as f64)).round() as u32,
+                255,
+            ) as u8;
             let pixel = image::Luma([grey_val as u8]);
             image_buf[(x as u32, (height - y - 1) as u32)] = pixel;
         }
@@ -36,11 +42,11 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
 
 fn main() {
     // load the image and convert it to grayscaley
-    let image = ImageReader::open("test.jpg").unwrap().decode().unwrap();
+    let image = ImageReader::open("data/test.jpg").unwrap().decode().unwrap();
     let image = image.to_luma8();
 
     let hough_space = hough_transform(&image, 5);
-    save_houghspace(&hough_space, "space.jpg");
+    save_houghspace(&hough_space, "data/space.jpeg");
 
     println!("Loaded");
 }
