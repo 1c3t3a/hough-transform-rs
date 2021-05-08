@@ -75,7 +75,7 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
     image_buf.save(filename).unwrap();
 }
 
-fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(f32, f32)> {
+fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(f32, f64)> {
     let mut vec = Vec::new();
 
     let width = hough_space.nrows();
@@ -84,7 +84,7 @@ fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(
     for rho_scaled in 0..height{
         for tetha in 0..width {
             if hough_space[(tetha, rho_scaled)] >= threshold {
-                println!("value {} in hough_space will be transformed back", hough_space[(tetha, rho)]);
+                println!("value {} in hough_space will be transformed back", hough_space[(tetha, rho_scaled)]);
                 let rho = (rho_scaled as f64 - 0.5) / 0.5;
 
                 vec.push((tetha as f32, rho))
