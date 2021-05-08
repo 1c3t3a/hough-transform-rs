@@ -1,8 +1,8 @@
-use std::ops::Add;
-
 use image::{io::Reader as ImageReader, ImageBuffer, Luma, Rgba};
 use imageproc::drawing::{draw_line_segment_mut, Canvas};
 use na::DMatrix;
+
+#[allow(clippy::float_cmp)]
 
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
     let max_rho = calculate_max_rho_value(image.width(), image.height());
@@ -17,14 +17,14 @@ fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMa
         .for_each(|(theta, rho)| {
             let scaled_rho = scale_rho(rho, max_rho);
 
-            hough_space[(theta as usize, scaled_rho as usize)] += 1
+            hough_space[(theta, scaled_rho as usize)] += 1
         });
 
     hough_space
 }
 
 #[inline]
-fn create_lines(x: u32, y: u32) -> Vec<(u32, f64)> {
+fn create_lines(x: u32, y: u32) -> Vec<(usize, f64)> {
     let mut vec = Vec::new();
 
     for i in 0..180 {
@@ -34,19 +34,19 @@ fn create_lines(x: u32, y: u32) -> Vec<(u32, f64)> {
 
         let scale = std::f64::consts::PI / 180.0;
         let rho = x * (scale * tetha).cos() + y * (scale * tetha).sin();
-        vec.push((i as u32, rho));
+        vec.push((i as usize, rho));
     }
     vec
 }
 
 #[inline]
-fn calculate_max_rho_value(width: u32, height: u32) -> f64 {
-    ((width as f64).hypot(height as f64)).ceil()
+fn calculate_max_rho_value(width: u32, height: u32) -> f32 {
+    ((width as f32).hypot(height as f32)).ceil()
 }
 
 #[inline]
-fn scale_rho(rho: f64, max_rho_value: f64) -> u32 {
-    ((rho * 0.5).round() + 0.5 * max_rho_value as f64) as u32
+fn scale_rho(rho: f64, max_rho_value: f32) -> u32 {
+    ((rho * 0.5).round() + 0.5 * max_rho_value as f64).round() as u32
 }
 
 fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
@@ -75,18 +75,24 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
     image_buf.save(filename).unwrap();
 }
 
-
-fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(f32, f64)> {
+fn transform_to_image_space(
+    hough_space: &DMatrix<u32>,
+    threshold: u32,
+    max_rho_value: f32,
+) -> Vec<(f32, f32)> {
     let mut vec = Vec::new();
 
     let width = hough_space.nrows();
     let height = hough_space.ncols();
 
-    for rho_scaled in 0..height{
+    for rho_scaled in 0..height {
         for tetha in 0..width {
             if hough_space[(tetha, rho_scaled)] >= threshold {
-                println!("value {} in hough_space will be transformed back", hough_space[(tetha, rho_scaled)]);
-                let rho = (rho_scaled as f64 - 0.5) / 0.5;
+                println!(
+                    "value {} in hough_space will be transformed back",
+                    hough_space[(tetha, rho_scaled)]
+                );
+                let rho = (rho_scaled as f32 - 0.5 * max_rho_value) * 2.0;
 
                 vec.push((tetha as f32, rho))
             }
@@ -109,6 +115,9 @@ where
     if theta == 0.0 || theta == 180.0f32 {
         y_one = (rho.abs(), 1.0);
         y_end = (rho.abs(), image_width);
+    } else if theta == 90.0 {
+        y_one = (0.0, rho.abs());
+        y_end = (image_width, rho.abs());
     } else {
         y_one = (1.0, (rho - theta_rad.cos()) / theta_rad.sin());
         y_end = (
@@ -122,7 +131,7 @@ where
 
 fn main() {
     // load the image and convert it to grayscaley
-    let mut image = ImageReader::open("data/test2.JPG")
+    let mut image = ImageReader::open("data/nicht-parallelogramm.jpg")
         .unwrap()
         .decode()
         .unwrap();
@@ -131,10 +140,17 @@ fn main() {
     let hough_space = hough_transform(&image2, 250);
     save_houghspace(&hough_space, "data/space.jpeg");
 
+    let max_rho = calculate_max_rho_value(image.width(), image.height());
+    let lines = transform_to_image_space(&hough_space, 63, max_rho);
 
-    transform_to_image_space(&hough_space, 100);
-
-    draw_line_in_image(&mut image, 0f32, 87f32, Rgba([255_u8, 0_u8, 0_u8, 255_u8]));
+    for line in lines {
+        draw_line_in_image(
+            &mut image,
+            line.0,
+            line.1,
+            Rgba([255_u8, 0_u8, 0_u8, 255_u8]),
+        );
+    }
 
     image.save("data/detected.jpeg").unwrap();
     println!("Loaded");
