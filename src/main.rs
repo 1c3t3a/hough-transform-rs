@@ -1,7 +1,7 @@
-use image::{ImageBuffer, Luma, Rgba, io::Reader as ImageReader};
-use imageproc::drawing::{
-    draw_line_segment_mut, Canvas,
-};
+use std::ops::Add;
+
+use image::{io::Reader as ImageReader, ImageBuffer, Luma, Rgba};
+use imageproc::drawing::{draw_line_segment_mut, Canvas};
 use na::DMatrix;
 
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
@@ -75,6 +75,7 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
     image_buf.save(filename).unwrap();
 }
 
+
 fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(f32, f64)> {
     let mut vec = Vec::new();
 
@@ -95,13 +96,26 @@ fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(
     vec
 }
 
-fn draw_line_in_image<C>(image: &mut C, m: u32, b: u32, color: C::Pixel)
+fn draw_line_in_image<C>(image: &mut C, theta: f32, rho: f32, color: C::Pixel)
 where
     C: Canvas,
-    C::Pixel: 'static
+    C::Pixel: 'static,
 {
-    let y_one = (1f32, (m + b) as f32);
-    let y_end = (image.width() as f32, (m * 180 + b) as f32);
+    let image_width = image.width() as f32;
+    let theta_rad = theta * std::f32::consts::PI / 180.0;
+    let y_one: (f32, f32);
+    let y_end: (f32, f32);
+    // special case that line is parrallel to the y-axis
+    if theta == 0.0 || theta == 180.0f32 {
+        y_one = (rho.abs(), 1.0);
+        y_end = (rho.abs(), image_width);
+    } else {
+        y_one = (1.0, (rho - theta_rad.cos()) / theta_rad.sin());
+        y_end = (
+            image_width,
+            (rho - image_width * theta_rad.cos()) / theta_rad.sin(),
+        );
+    }
 
     draw_line_segment_mut(image, y_one, y_end, color);
 }
@@ -117,9 +131,10 @@ fn main() {
     let hough_space = hough_transform(&image2, 250);
     save_houghspace(&hough_space, "data/space.jpeg");
 
+
     transform_to_image_space(&hough_space, 100);
 
-    draw_line_in_image(&mut image, 0, 40, Rgba([255_u8, 0_u8, 0_u8, 255_u8]));
+    draw_line_in_image(&mut image, 0f32, 87f32, Rgba([255_u8, 0_u8, 0_u8, 255_u8]));
 
     image.save("data/detected.jpeg").unwrap();
     println!("Loaded");
