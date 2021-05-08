@@ -131,7 +131,7 @@ where
 
 fn main() {
     // load the image and convert it to grayscaley
-    let mut image = ImageReader::open("data/nicht-parallelogramm.jpg")
+    let mut image = ImageReader::open("data/triangle.jpg")
         .unwrap()
         .decode()
         .unwrap();
@@ -141,8 +141,9 @@ fn main() {
     save_houghspace(&hough_space, "data/space.jpeg");
 
     let max_rho = calculate_max_rho_value(image.width(), image.height());
-    let lines = transform_to_image_space(&hough_space, 63, max_rho);
+    // let lines = transform_to_image_space(&hough_space, 63, max_rho);
 
+    let lines = transform_to_image_space(&hough_space, 42, max_rho); 
     for line in lines {
         draw_line_in_image(
             &mut image,
