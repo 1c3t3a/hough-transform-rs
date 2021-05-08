@@ -1,4 +1,7 @@
-use image::{io::Reader as ImageReader, ImageBuffer, Luma};
+use image::{ImageBuffer, Luma, Rgba, io::Reader as ImageReader};
+use imageproc::drawing::{
+    draw_line_segment_mut, Canvas,
+};
 use na::DMatrix;
 
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
@@ -72,16 +75,30 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
     image_buf.save(filename).unwrap();
 }
 
+fn draw_line_in_image<C>(image: &mut C, m: u32, b: u32, color: C::Pixel)
+where
+    C: Canvas,
+    C::Pixel: 'static
+{
+    let y_one = (1f32, (m + b) as f32);
+    let y_end = (image.width() as f32, (m * 180 + b) as f32);
+
+    draw_line_segment_mut(image, y_one, y_end, color);
+}
+
 fn main() {
     // load the image and convert it to grayscaley
-    let image = ImageReader::open("data/test3.JPG")
+    let mut image = ImageReader::open("data/test2.JPG")
         .unwrap()
         .decode()
         .unwrap();
-    let image = image.to_luma8();
+    let image2 = image.to_luma8();
 
-    let hough_space = hough_transform(&image, 250);
+    let hough_space = hough_transform(&image2, 250);
     save_houghspace(&hough_space, "data/space.jpeg");
 
+    draw_line_in_image(&mut image, 0, 40, Rgba([255_u8, 0_u8, 0_u8, 255_u8]));
+
+    image.save("data/detected.jpeg").unwrap();
     println!("Loaded");
 }
