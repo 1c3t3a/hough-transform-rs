@@ -1,32 +1,48 @@
 use image::{io::Reader as ImageReader, ImageBuffer, Luma};
 use na::DMatrix;
 
-//tetha, rho
-fn create_lines(x: u32, y: u32, greyvalue: u8) -> Vec<(u32, u32)> {
+fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
+    let max_rho = calculate_max_rho_value(image.width(), image.height());
+    // allocate the hough space, the x axis is 180 (degree) wide, the y axis ranges from zero
+    // to the maximal rho value (calculated by `calculate_max_rho_value`)
+    let mut hough_space = DMatrix::<u32>::zeros(180, max_rho.round() as usize);
+
+    image
+        .enumerate_pixels()
+        .filter(|pixel| pixel.2[0] >= threshold)
+        .flat_map(|pixel| create_lines(pixel.0, pixel.1))
+        .for_each(|(theta, rho)| {
+            let scaled_rho = scale_rho(rho, max_rho);
+
+            hough_space[(theta as usize, scaled_rho as usize)] += 1
+        });
+
+    hough_space
+}
+
+#[inline]
+fn create_lines(x: u32, y: u32) -> Vec<(u32, f64)> {
     let mut vec = Vec::new();
 
     for i in 0..180 {
-        let tetha = i as f32;
-        let x = x as f32;
-        let y = y as f32;
+        let tetha = i as f64;
+        let x = x as f64;
+        let y = y as f64;
 
-        let rho = x*tetha.cos() + y*tetha.sin();
-        let rho = rho as u32;
+        let rho = x * tetha.cos().to_radians() + y * tetha.sin().to_radians();
         vec.push((i as u32, rho));
     }
-    return vec;
+    vec
 }
 
-fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
-    let mut hough_space = DMatrix::<u32>::zeros(image.height() as usize, image.width() as usize);
+#[inline]
+fn calculate_max_rho_value(width: u32, height: u32) -> f64 {
+    ((width as f64).hypot(height as f64)).ceil()
+}
 
-    let _ = image
-        .enumerate_pixels()
-        .take_while(|pixel| pixel.2[0] > threshold)
-        .flat_map(|pixel| create_lines(pixel.0, pixel.1, pixel.2[0]))
-        .for_each(|(rho, theta)| hough_space[(rho as usize, theta as usize)] += 1);
-
-    hough_space
+#[inline]
+fn scale_rho(rho: f64, max_rho_value: f64) -> u32 {
+    ((rho * 0.5).round() + 0.5 * max_rho_value as f64) as u32
 }
 
 fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
@@ -40,11 +56,14 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
 
     for y in 0..height {
         for x in 0..width {
+            if hough_space[(x, y)] == max_value {
+                println!("Theta: {}, Rho: {}", x, y);
+            }
             let grey_val = na::min(
                 ((hough_space[(x, y)] as f64) * 255.0 / (max_value as f64)).round() as u32,
                 255,
             ) as u8;
-            let pixel = image::Luma([grey_val as u8]);
+            let pixel = image::Luma([grey_val]);
             image_buf[(x as u32, (height - y - 1) as u32)] = pixel;
         }
     }
@@ -54,10 +73,13 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
 
 fn main() {
     // load the image and convert it to grayscaley
-    let image = ImageReader::open("data/test.jpg").unwrap().decode().unwrap();
+    let image = ImageReader::open("data/test2.JPG")
+        .unwrap()
+        .decode()
+        .unwrap();
     let image = image.to_luma8();
 
-    let hough_space = hough_transform(&image, 5);
+    let hough_space = hough_transform(&image, 250);
     save_houghspace(&hough_space, "data/space.jpeg");
 
     println!("Loaded");
