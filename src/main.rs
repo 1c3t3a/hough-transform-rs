@@ -29,7 +29,8 @@ fn create_lines(x: u32, y: u32) -> Vec<(u32, f64)> {
         let x = x as f64;
         let y = y as f64;
 
-        let rho = x * tetha.cos().to_radians() + y * tetha.sin().to_radians();
+        let scale = std::f64::consts::PI / 180.0;
+        let rho = x * (scale * tetha).cos() + y * (scale * tetha).sin();
         vec.push((i as u32, rho));
     }
     vec
@@ -73,7 +74,7 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
 
 fn main() {
     // load the image and convert it to grayscaley
-    let image = ImageReader::open("data/test2.JPG")
+    let image = ImageReader::open("data/test3.JPG")
         .unwrap()
         .decode()
         .unwrap();
