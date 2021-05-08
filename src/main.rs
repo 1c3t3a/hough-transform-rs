@@ -1,5 +1,6 @@
 use image::{io::Reader as ImageReader, ImageBuffer, Luma};
 use na::DMatrix;
+use nalgebra::DMatrix;
 
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
     let max_rho = calculate_max_rho_value(image.width(), image.height());
@@ -72,6 +73,24 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
     image_buf.save(filename).unwrap();
 }
 
+fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(u32, i32)> {
+    let mut vec = Vec::new();
+
+    let width = hough_space.nrows();
+    let height = hough_space.ncols();
+
+    for rho in 0..height {
+        for tetha in 0..width {
+            if hough_space[(tetha, rho)] >= threshold {
+                println!("value {} in hough_space will be transformed back", hough_space[(tetha, rho)]);
+                vec.push((tetha, rho))
+            }
+        }
+    }
+
+    vec
+}
+
 fn main() {
     // load the image and convert it to grayscaley
     let image = ImageReader::open("data/test3.JPG")
@@ -82,6 +101,8 @@ fn main() {
 
     let hough_space = hough_transform(&image, 250);
     save_houghspace(&hough_space, "data/space.jpeg");
+
+    transform_to_image_space(&hough_space, 100);
 
     println!("Loaded");
 }

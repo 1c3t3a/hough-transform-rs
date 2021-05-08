@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 image = "0.23.14"
 na = "0.24.0"
+nalgebra = "0.18.0"
