@@ -7,5 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arrayfire = "3.7.2"
 image = "0.23.14"
+na = "0.24.0"
