@@ -1,7 +1,19 @@
 use image::{io::Reader as ImageReader, ImageBuffer, Luma};
 
-fn create_lines(x: u32, y: u32, greyvalue: u8) -> Vec<(i32, i32)> {
-    Vec::new()
+//tetha, rho
+fn create_lines(x: u32, y: u32, greyvalue: u8) -> Vec<(u32, u32)> {
+    let mut vec = Vec::new();
+
+    for i in 0..180 {
+        let tetha = i as f32;
+        let x = x as f32;
+        let y = y as f32;
+
+        let rho = x*tetha.cos() + y*tetha.sin();
+        let rho = rho as u32;
+        vec.push((i as u32, rho));
+    }
+    return vec;
 }
 
 fn hough_transform(
