@@ -1,8 +1,20 @@
 use image::{io::Reader as ImageReader, ImageBuffer, Luma};
 use na::DMatrix;
 
-fn create_lines(x: u32, y: u32, greyvalue: u8) -> Vec<(i32, i32)> {
-    vec![(0, 0)]
+//tetha, rho
+fn create_lines(x: u32, y: u32, greyvalue: u8) -> Vec<(u32, u32)> {
+    let mut vec = Vec::new();
+
+    for i in 0..180 {
+        let tetha = i as f32;
+        let x = x as f32;
+        let y = y as f32;
+
+        let rho = x*tetha.cos() + y*tetha.sin();
+        let rho = rho as u32;
+        vec.push((i as u32, rho));
+    }
+    return vec;
 }
 
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
