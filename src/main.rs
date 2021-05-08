@@ -81,11 +81,13 @@ fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(
     let width = hough_space.nrows();
     let height = hough_space.ncols();
 
-    for rho in 0..height{
+    for rho_scaled in 0..height{
         for tetha in 0..width {
-            if hough_space[(tetha, rho)] >= threshold {
+            if hough_space[(tetha, rho_scaled)] >= threshold {
                 println!("value {} in hough_space will be transformed back", hough_space[(tetha, rho)]);
-                vec.push((tetha as f32, rho as f32))
+                let rho = (rho_scaled as f64 - 0.5) / 0.5;
+
+                vec.push((tetha as f32, rho))
             }
         }
     }
