@@ -75,6 +75,27 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
     image_buf.save(filename).unwrap();
 }
 
+
+fn transform_to_image_space(hough_space: &DMatrix<u32>, threshold: u32) -> Vec<(f32, f64)> {
+    let mut vec = Vec::new();
+
+    let width = hough_space.nrows();
+    let height = hough_space.ncols();
+
+    for rho_scaled in 0..height{
+        for tetha in 0..width {
+            if hough_space[(tetha, rho_scaled)] >= threshold {
+                println!("value {} in hough_space will be transformed back", hough_space[(tetha, rho_scaled)]);
+                let rho = (rho_scaled as f64 - 0.5) / 0.5;
+
+                vec.push((tetha as f32, rho))
+            }
+        }
+    }
+
+    vec
+}
+
 fn draw_line_in_image<C>(image: &mut C, theta: f32, rho: f32, color: C::Pixel)
 where
     C: Canvas,
@@ -109,6 +130,9 @@ fn main() {
 
     let hough_space = hough_transform(&image2, 250);
     save_houghspace(&hough_space, "data/space.jpeg");
+
+
+    transform_to_image_space(&hough_space, 100);
 
     draw_line_in_image(&mut image, 0f32, 87f32, Rgba([255_u8, 0_u8, 0_u8, 255_u8]));
 
