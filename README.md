@@ -19,7 +19,7 @@ $ cargo build --release
 
 ## Usage
 
-By running the command `cargo run -- --help` you can get an overview of all the commands available:
+By running the command `cargo run -- --help` inside the repository folder you can get an overview of all the commands available:
 
 ```
 USAGE:
