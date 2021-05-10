@@ -1,9 +1,23 @@
+//! This is a demonstration of a Hough-Transformation written for a coursework in the class
+//! Computer-Graphics and Image Processing. The programm takes an image as input and calculates
+//! the corresponding Hough-Space. The Hough-Space will be visualized and saved in form of a
+//! greyscale image. Afterwards the Hough-Space is filtered via a threshold value provided by
+//! the user and the corresponding lines are being transformed back into the original image space
+//! and drawn into the final image with an overlay. The final image is then also safed.
+//!
+
+use clap::{AppSettings, Clap};
+
 use image::{io::Reader as ImageReader, ImageBuffer, Luma, Rgba};
 use imageproc::drawing::{draw_line_segment_mut, Canvas};
 use na::DMatrix;
 
-#[allow(clippy::float_cmp)]
+#[allow(clippy::clippy::float_cmp)]
 
+/// Calculates the hough transformation for a given `image::GreyImage`. The Hough space is returned
+/// in the form of a `na::DMatrix` where the columns stand for the rho value (scaled) and the rows
+/// stand for the angle theta, ranging from 0-180 degree. A value for a given row and column index
+/// represents how many lines "voted" for this combination of rho and theta.
 fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMatrix<u32> {
     let max_rho = calculate_max_rho_value(image.width(), image.height());
     // allocate the hough space, the x axis is 180 (degree) wide, the y axis ranges from zero
@@ -23,33 +37,40 @@ fn hough_transform(image: &ImageBuffer<Luma<u8>, Vec<u8>>, threshold: u8) -> DMa
     hough_space
 }
 
+/// Generates a parametric family of lines for a given point. This involves generating
+/// the parameters rho and theta for any possible line throgh the given point in the image.
+/// All possible combinations are the returned in the form of a vector.
 #[inline]
 fn create_lines(x: u32, y: u32) -> Vec<(usize, f64)> {
-    let mut vec = Vec::new();
+    (0..180)
+        .map(|theta| {
+            let x = x as f64;
+            let y = y as f64;
 
-    for i in 0..180 {
-        let tetha = i as f64;
-        let x = x as f64;
-        let y = y as f64;
-
-        let scale = std::f64::consts::PI / 180.0;
-        let rho = x * (scale * tetha).cos() + y * (scale * tetha).sin();
-        vec.push((i as usize, rho));
-    }
-    vec
+            let theta_rad = theta as f64 * std::f64::consts::PI / 180.0;
+            let rho = x * theta_rad.cos() + y * theta_rad.sin();
+            (theta as usize, rho)
+        })
+        .collect()
 }
 
+/// Calculates the maximum value for rho which is the length of the diagonal line through
+/// the image.
 #[inline]
 fn calculate_max_rho_value(width: u32, height: u32) -> f32 {
     ((width as f32).hypot(height as f32)).ceil()
 }
 
+/// Scale rho from an f64 to a u32 value, as the hough space is only indexable via an unsigned
+/// integer value.
 #[inline]
 fn scale_rho(rho: f64, max_rho_value: f32) -> u32 {
     ((rho * 0.5).round() + 0.5 * max_rho_value as f64).round() as u32
 }
 
-fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
+/// Save the hough space to an image, this involves calculating a greyvalue for every point in the hough
+/// space. The grey value is normalized via the maximal value in the houg space.
+fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) -> Result<(), image::ImageError> {
     let max_value = hough_space.max();
 
     println!("Max value in Hough-Space is: {}", max_value);
@@ -72,9 +93,11 @@ fn save_houghspace(hough_space: &DMatrix<u32>, filename: &str) {
         }
     }
 
-    image_buf.save(filename).unwrap();
+    image_buf.save(filename)
 }
 
+/// Transforms the Hough-Space back to the image space by calculating rho and theta for every point
+/// in it. Rho and theta could then be used to draw a line into the original image.
 fn transform_to_image_space(
     hough_space: &DMatrix<u32>,
     threshold: u32,
@@ -86,15 +109,15 @@ fn transform_to_image_space(
     let height = hough_space.ncols();
 
     for rho_scaled in 0..height {
-        for tetha in 0..width {
-            if hough_space[(tetha, rho_scaled)] >= threshold {
+        for theta in 0..width {
+            if hough_space[(theta, rho_scaled)] >= threshold {
                 println!(
                     "value {} in hough_space will be transformed back",
-                    hough_space[(tetha, rho_scaled)]
+                    hough_space[(theta, rho_scaled)]
                 );
                 let rho = (rho_scaled as f32 - 0.5 * max_rho_value) * 2.0;
 
-                vec.push((tetha as f32, rho))
+                vec.push((theta as f32, rho))
             }
         }
     }
@@ -102,6 +125,8 @@ fn transform_to_image_space(
     vec
 }
 
+/// Draws a line into the given image for a the given parameters rho and theta (polar coordinates).
+/// Attention: This mutates the imaga and therfore takes a mutable reference of it.
 fn draw_line_in_image<C>(image: &mut C, theta: f32, rho: f32, color: C::Pixel)
 where
     C: Canvas,
@@ -129,21 +154,51 @@ where
     draw_line_segment_mut(image, y_one, y_end, color);
 }
 
+/// A demonstration of a hough transformation written in the rust programming language.
+#[derive(Clap)]
+#[clap(
+    version = "1.0",
+    author = "Bastian Kersting <bastian@cmbt.de>, Tobias Karius <@>"
+)]
+#[clap(setting = AppSettings::ColoredHelp)]
+struct Opts {
+    /// Sets the input image path.
+    #[clap(long, short)]
+    image_path: String,
+    /// Sets the path where an image of the Hough-Space is safed.
+    #[clap(long)]
+    hough_space_target: String,
+    /// Sets the path where the image of the input including an overlay with the lines is safed.
+    #[clap(long, short)]
+    converted_target: String,
+    /// Sets the threshold greyvalue for when a pixel is part of an edge.
+    #[clap(long, short)]
+    edge_threshold: u8,
+    /// Sets the threshold for filtering the Hough-Space.
+    #[clap(long)]
+    hough_space_threshold: u32,
+}
+
 fn main() {
+    // parse the cmd arguments
+    let opts: Opts = Opts::parse();
+
     // load the image and convert it to grayscaley
-    let mut image = ImageReader::open("data/triangle.jpg")
-        .unwrap()
+    let mut image = ImageReader::open(opts.image_path.clone())
+        .expect("Error while loading the image")
         .decode()
-        .unwrap();
-    let image2 = image.to_luma8();
+        .expect("Error while decoding the image");
+    let grey_img = image.to_luma8();
 
-    let hough_space = hough_transform(&image2, 250);
-    save_houghspace(&hough_space, "data/space.jpeg");
+    // calculate the hough space for the given image and save it's representation into a file
+    let hough_space = hough_transform(&grey_img, opts.edge_threshold);
+    save_houghspace(&hough_space, &opts.hough_space_target).expect("Couldn't save Hough-Space");
 
+    // transform the detected lines back to the image space (using the threshold)
     let max_rho = calculate_max_rho_value(image.width(), image.height());
-    // let lines = transform_to_image_space(&hough_space, 63, max_rho);
+    let lines = transform_to_image_space(&hough_space, opts.hough_space_threshold, max_rho);
 
-    let lines = transform_to_image_space(&hough_space, 42, max_rho); 
+    // draw the lines into the original image and save it
     for line in lines {
         draw_line_in_image(
             &mut image,
@@ -153,6 +208,9 @@ fn main() {
         );
     }
 
-    image.save("data/detected.jpeg").unwrap();
-    println!("Loaded");
+    // finally save the modified image
+    image
+        .save(opts.converted_target)
+        .expect("failed to save result image");
+    println!("Done");
 }
