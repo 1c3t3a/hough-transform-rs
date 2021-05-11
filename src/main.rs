@@ -158,7 +158,7 @@ where
 #[derive(Clap)]
 #[clap(
     version = "1.0",
-    author = "Bastian Kersting <bastian@cmbt.de>, Tobias Karius <@>"
+    author = "Bastian Kersting <bastian@cmbt.de>, Tobias Karius <tobias.karius@yahoo.de>"
 )]
 #[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
