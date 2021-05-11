@@ -33,9 +33,6 @@ OPTIONS:
     -c, --converted-target <converted-target>
             Sets the path where the image of the input including an overlay with the lines is safed
 
-    -e, --edge-threshold <edge-threshold>
-            Sets the threshold greyvalue for when a pixel is part of an edge
-
         --hough-space-target <hough-space-target>
             Sets the path where an image of the Hough-Space is safed
 
