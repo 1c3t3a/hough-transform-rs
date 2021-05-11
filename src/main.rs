@@ -171,9 +171,6 @@ struct Opts {
     /// Sets the path where the image of the input including an overlay with the lines is safed.
     #[clap(long, short)]
     converted_target: String,
-    /// Sets the threshold greyvalue for when a pixel is part of an edge.
-    #[clap(long, short)]
-    edge_threshold: u8,
     /// Sets the threshold for filtering the Hough-Space.
     #[clap(long)]
     hough_space_threshold: u32,
@@ -191,7 +188,8 @@ fn main() {
     let grey_img = image.to_luma8();
 
     // calculate the hough space for the given image and save it's representation into a file
-    let hough_space = hough_transform(&grey_img, opts.edge_threshold);
+    // A pixel is analyzed when it's greyvalue is higher than 250
+    let hough_space = hough_transform(&grey_img, 250);
     save_houghspace(&hough_space, &opts.hough_space_target).expect("Couldn't save Hough-Space");
 
     // transform the detected lines back to the image space (using the threshold)
